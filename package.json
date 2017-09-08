@@ -1,0 +1,25 @@
+{
+  "name": "epd_rpi",
+  "version": "0.1.1",
+  "description": "Node.js binding of PCD8544 LCD screen driver for Raspberry-Pi",
+  "author": "Paul-Emmanuel Vandenburie <pevandenburie@yahoo.fr> (https://github.com/pevandenburie)",
+  "keywords": [
+    "PCD8544",
+    "Raspberry-Pi",
+    "LCD"
+  ],
+  "main": "index.js",
+  "gypfile": true,
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/pevandenburie/PCD8544.git"
+  },
+  "scripts": {
+    "install": "node-gyp rebuild"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "bindings": "^1.2.1",
+    "nan": "*"
+  }
+}

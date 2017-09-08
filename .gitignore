@@ -1,0 +1,6 @@
+build/
+*.log
+node_modules/
+wiringpi/
+*.out
+test/
