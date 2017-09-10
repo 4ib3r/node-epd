@@ -368,9 +368,9 @@ void EPD_Dis_Part(unsigned int xStart, unsigned int xEnd, unsigned int yStart, u
 		part_display(xStart / 8, xEnd / 8, yEnd % 256, yEnd / 256, yStart % 256, yStart / 256);
 		EPD_WriteDispRam(xEnd - xStart, yEnd - yStart + 1, DisBuffer);
 		EPD_Update_Part();
-		/*driver_delay_xms(500);
+		//driver_delay_xms(100);
 		part_display(xStart / 8, xEnd / 8, yEnd % 256, yEnd / 256, yStart % 256, yStart / 256);
-		EPD_WriteDispRam(xEnd - xStart, yEnd - yStart + 1, DisBuffer);*/
+		EPD_WriteDispRam(xEnd - xStart, yEnd - yStart + 1, DisBuffer);
 	}
 }
 
@@ -398,28 +398,6 @@ void Dis_Clear_full(void)
 	driver_delay_xms(DELAYTIME);
 }
 
-DisClearFullWorker::DisClearFullWorker(Callback *callback) : AsyncWorker(callback){};
-DisClearFullWorker::~DisClearFullWorker(){};
-void DisClearFullWorker::Execute()
-{
-	Dis_Clear_full();
-};
-void DisClearFullWorker::HandleOKCallback()
-{
-	HandleScope scope;
-
-	Local<Value> argv[] = {
-		Null()};
-
-	callback->Call(2, argv);
-};
-
-// Asynchronous access to the `Estimate()` function
-NAN_METHOD(ClearAsync)
-{
-	Callback *callback = new Callback(info[0].As<Function>());
-	AsyncQueueWorker(new DisClearFullWorker(callback));
-}
 /********************************************************************************
 		clear part screen
 ********************************************************************************/

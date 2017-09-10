@@ -8,6 +8,7 @@
 #include <node.h>
 #include <nan.h>
 
+/** Font representation */
 class FontFace : public Nan::ObjectWrap {
     public: 
 		static void Init();   

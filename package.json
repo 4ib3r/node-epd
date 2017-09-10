@@ -1,18 +1,21 @@
 {
-  "name": "epd_rpi",
-  "version": "0.1.1",
-  "description": "Node.js binding of PCD8544 LCD screen driver for Raspberry-Pi",
-  "author": "Paul-Emmanuel Vandenburie <pevandenburie@yahoo.fr> (https://github.com/pevandenburie)",
+  "name": "node-epd",
+  "version": "1.0.0",
+  "description": "Node.js binding of waveshare e-ink display driver for Raspberry-Pi",
+  "author": "Adrian Sławiński <adrian.slawinski@javadevelopers.pl>",
   "keywords": [
-    "PCD8544",
-    "Raspberry-Pi",
-    "LCD"
+    "Waveshare",
+    "e-ink",
+    "e-paper",
+    "epd",
+    "display",
+    "Raspberry-Pi"
   ],
   "main": "index.js",
   "gypfile": true,
   "repository": {
     "type": "git",
-    "url": "git://github.com/pevandenburie/PCD8544.git"
+    "url": "git://github.com/4ib3r/node-epd.git"
   },
   "scripts": {
     "install": "node-gyp rebuild"

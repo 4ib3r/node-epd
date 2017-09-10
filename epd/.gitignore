@@ -1,6 +1,0 @@
-build/
-*.log
-node_modules/
-*.out
-*.o
-.vscode/

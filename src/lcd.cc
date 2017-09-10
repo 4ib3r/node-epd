@@ -19,10 +19,12 @@ static unsigned char lcd_buff[LCDHEIGHT * LCDWIDTH * 8];
 
 #ifdef enablePartialUpdate
 static uint16_t xUpdateMin, xUpdateMax, yUpdateMin, yUpdateMax;
+static bool changed = false;
 #endif
 
 void updateBoundingBox(uint16_t xmin, uint16_t ymin, uint16_t xmax, uint16_t ymax) {
 #ifdef enablePartialUpdate
+    changed = true;
 	if (xmin < xUpdateMin) xUpdateMin = xmin;
 	if (xmax > xUpdateMax) xUpdateMax = xmax;
 	if (ymin < yUpdateMin) yUpdateMin = ymin;
@@ -42,20 +44,16 @@ void EpdLcd::Init()
                                    Nan::New<FunctionTemplate>(Size));
     ctor->PrototypeTemplate()->Set(Nan::New("backlight").ToLocalChecked(),
                                    Nan::New<FunctionTemplate>(Backlight));
-    ctor->PrototypeTemplate()->Set(Nan::New("showLogo").ToLocalChecked(),
-                                   Nan::New<FunctionTemplate>(ShowLogo));
     ctor->PrototypeTemplate()->Set(Nan::New("data").ToLocalChecked(),
                                    Nan::New<FunctionTemplate>(Data));
     ctor->PrototypeTemplate()->Set(Nan::New("clear").ToLocalChecked(),
                                    Nan::New<FunctionTemplate>(Clear));
-    ctor->PrototypeTemplate()->Set(Nan::New("clearPart").ToLocalChecked(),
+    ctor->PrototypeTemplate()->Set(Nan::New("partClear").ToLocalChecked(),
                                     Nan::New<FunctionTemplate>(ClearPart));
-    ctor->PrototypeTemplate()->Set(Nan::New("clearAsync").ToLocalChecked(),
-                                   Nan::New<FunctionTemplate>(ClearAsync));
     ctor->PrototypeTemplate()->Set(Nan::New("update").ToLocalChecked(),
                                    Nan::New<FunctionTemplate>(Update));
     ctor->PrototypeTemplate()->Set(Nan::New("partUpdate").ToLocalChecked(),
-                                    Nan::New<FunctionTemplate>(BlitPart));
+                                    Nan::New<FunctionTemplate>(UpdatePart));
     ctor->PrototypeTemplate()->Set(Nan::New("color").ToLocalChecked(),
                                    Nan::New<FunctionTemplate>(Color));
     ctor->PrototypeTemplate()->Set(Nan::New("line").ToLocalChecked(),
@@ -116,11 +114,11 @@ NAN_METHOD(EpdLcd::New)
 {
     Nan::HandleScope scope;
 
-    uint8_t ch = info[0]->NumberValue();
-    uint8_t dc = info[1]->NumberValue();
-    uint8_t cs = info[2]->NumberValue();
-    uint8_t rst = info[3]->NumberValue();
-    uint8_t led = info[4]->NumberValue();
+    uint8_t led = info[1]->IsUndefined() ? 127 : info[0]->NumberValue();
+    uint8_t ch = info[1]->IsUndefined() ? 0 : info[1]->NumberValue();
+    uint8_t dc = info[2]->IsUndefined() ? 25 : info[2]->NumberValue();
+    uint8_t cs = info[3]->IsUndefined() ? 8 : info[3]->NumberValue();
+    uint8_t rst = info[4]->IsUndefined() ? 17 : info[4]->NumberValue();
 
     EpdLcd *obj = new EpdLcd(ch, dc, cs, rst, led);
     obj->_led = led;
@@ -156,12 +154,6 @@ NAN_METHOD(EpdLcd::Backlight)
     return;
 }
 
-NAN_METHOD(EpdLcd::ShowLogo)
-{
-    Nan::HandleScope scope;
-    //LCDshowLogo();
-}
-
 NAN_METHOD(EpdLcd::Data)
 {
     Nan::HandleScope scope;
@@ -178,11 +170,16 @@ NAN_METHOD(EpdLcd::Data)
 NAN_METHOD(EpdLcd::Clear)
 {
     Nan::HandleScope scope;
-    //LCDclear();
-    for(uint16_t i = 0; i < LCDWIDTH * LCDHEIGHT / 8; i++) {
-      lcd_buff[i] = 0xff;
+    if (info[0]->IsUndefined()) {
+        //LCDclear();
+        for(uint16_t i = 0; i < LCDWIDTH * LCDHEIGHT / 8; i++) {
+            lcd_buff[i] = 0xff;
+        }
+        Dis_Clear_full();
+    } else {
+	  Callback *callback = new Callback(info[0].As<Function>());
+      AsyncQueueWorker(new DisClearFullWorker(callback));
     }
-    Dis_Clear_full();
     return;
 }
 
@@ -198,6 +195,7 @@ NAN_METHOD(EpdLcd::Update)
 {
     Nan::HandleScope scope;
     #ifdef enablePartialUpdate
+        changed = false;
         xUpdateMin = LCDWIDTH - 1;
         xUpdateMax = 0;
         yUpdateMin = LCDHEIGHT-1;
@@ -212,9 +210,28 @@ NAN_METHOD(EpdLcd::Update)
     return;
 }
 
+void DisClearFullWorker::Execute()
+{
+    //LCDclear();
+    for(uint16_t i = 0; i < LCDWIDTH * LCDHEIGHT / 8; i++) {
+        lcd_buff[i] = 0xff;
+    }
+	Dis_Clear_full();
+};
+void DisClearFullWorker::HandleOKCallback()
+{
+	Nan::HandleScope scope;
+
+	Local<Value> argv[] = {
+		Nan::Null()};
+
+	callback->Call(2, argv);
+};
+
 void DisUpdateFullWorker::Execute()
 {
-	#ifdef enablePartialUpdate
+    #ifdef enablePartialUpdate
+    changed = false;
     xUpdateMin = LCDWIDTH - 1;
     xUpdateMax = 0;
     yUpdateMin = LCDHEIGHT-1;
@@ -234,9 +251,10 @@ void DisUpdateFullWorker::HandleOKCallback()
 	callback->Call(2, argv);
 }
 
-NAN_METHOD(EpdLcd::BlitPart)
-{
-    Nan::HandleScope scope;
+bool updateScreenPart() {
+    if (!changed) {
+         return false;
+    }
     uint16_t x = floorByte(xUpdateMin);
     uint16_t y = floorByte(yUpdateMin);
     uint16_t x2 = xUpdateMax;
@@ -256,12 +274,41 @@ NAN_METHOD(EpdLcd::BlitPart)
     }
     Dis_Drawing(x/8, y/8, (unsigned char *)buff_part, h, w);
     #ifdef enablePartialUpdate
+        changed = false;
         xUpdateMin = LCDWIDTH - 1;
         xUpdateMax = 0;
         yUpdateMin = LCDHEIGHT-1;
         yUpdateMax = 0;
     #endif
+    return true;
+}
+
+NAN_METHOD(EpdLcd::UpdatePart)
+{
+    Nan::HandleScope scope;
+    if (info[0]->IsUndefined()) {
+        bool res = updateScreenPart();
+        info.GetReturnValue().Set(Nan::New(res));
+    } else {
+        Callback *callback = new Callback(info[0].As<Function>());
+        AsyncQueueWorker(new DisUpdatePartWorker(callback));
+    }
     return;
+}
+
+void DisUpdatePartWorker::Execute()
+{
+    this->res = updateScreenPart();
+};
+
+void DisUpdatePartWorker::HandleOKCallback()
+{
+	Nan::HandleScope scope;
+	Local<Value> argv[] = {
+        Nan::New(this->res),
+    };
+
+	callback->Call(1, argv);
 }
 
 NAN_METHOD(EpdLcd::Color)
@@ -644,13 +691,30 @@ NAN_METHOD(EpdLcd::Image)
 {
     Nan::HandleScope scope;
 
-    unsigned char *buff = (unsigned char *)node::Buffer::Data(info[0]->ToObject());
+    /*unsigned char *buff = (unsigned char *)node::Buffer::Data(info[0]->ToObject());
     unsigned int x = info[1]->NumberValue();
     unsigned int y = info[2]->NumberValue();
     unsigned int w = info[3]->NumberValue();
-    unsigned int h = info[4]->NumberValue();
-    printf("%d %d %d %d\r\n", x, y, w, h);
-    Dis_Drawing(x, y, (unsigned char *)buff, h, w);
+    unsigned int h = info[4]->NumberValue();*/
+    //bool invert = false;
+    //updateBoundingBox(x, y, x+w, y+h);
+    /*for (iy = y; iy < y+h; iy++)
+    {
+        for (ix = x; ix < x+w; ix++)
+        {
+            byte = (ix - x) / 8;
+            bit = 0x80 >> ((ix - x) & 7);
+            if (buff[(iy - y) + byte] & bit)
+            {
+                EpdSetPixel(ix, iy, invert ? -1 : 1);
+            }
+            else if (clear)
+            {
+                EpdSetPixel(ix, iy, 0);
+            }
+        }
+    }*/
+    //Dis_Drawing(x, y, (unsigned char *)buff, h, w);
     //v8::String::Utf8Value path(info[2]->ToString());
     //std::string _path = std::string(*path);
 
@@ -680,6 +744,9 @@ EpdLcd::EpdLcd(uint8_t channel, uint8_t dc, uint8_t cs, uint8_t rst, uint8_t led
     pinMode(DC, OUTPUT);
     pinMode(BUSY, INPUT);
     pinMode(CS, OUTPUT); //must set cs output,Otherwise it does not work
+    if (led < 127) {
+        pinMode(led, OUTPUT);
+    }
 
     //3.spi init
     if (wiringPiSPISetup(channel, 2000000) < 1)

@@ -64,18 +64,5 @@ void EPD_WriteDispRamMono(unsigned char XSize, unsigned int YSize,
 void EPD_Update(void);
 
 
-class DisClearFullWorker : public Nan::AsyncWorker {
-  public:
-	DisClearFullWorker(Nan::Callback *callback);
-	~DisClearFullWorker();
-	void Execute();
-  protected:  
-	void HandleOKCallback();
-  };
-
-
-NAN_METHOD(ClearAsync);
-
-
 
 #endif

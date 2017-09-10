@@ -40,16 +40,13 @@ class EpdLcd : public Nan::ObjectWrap {
         static void Init();
         static v8::Local<v8::Object> NewInstance(v8::Local<v8::Value> channel, v8::Local<v8::Value> dc, v8::Local<v8::Value> cs, v8::Local<v8::Value> rst, v8::Local<v8::Value> led);
         static NAN_METHOD(New);
-        static NAN_METHOD(Contrast);
         static NAN_METHOD(Backlight);
-        static NAN_METHOD(ShowLogo);
         static NAN_METHOD(Size);
         static NAN_METHOD(Data);
         static NAN_METHOD(Clear);
         static NAN_METHOD(ClearPart);
         static NAN_METHOD(Update);
-        static NAN_METHOD(UpdateAsync);
-        static NAN_METHOD(BlitPart);
+        static NAN_METHOD(UpdatePart);
         static NAN_METHOD(Color);
         static NAN_METHOD(Line);
         static NAN_METHOD(Rect);
@@ -60,7 +57,8 @@ class EpdLcd : public Nan::ObjectWrap {
         static NAN_METHOD(DrawString);
         static NAN_METHOD(Image);
     private:
-        EpdLcd(uint8_t channel, uint8_t dc, uint8_t cs, uint8_t rst, uint8_t led );
+        /** LCD constructor */
+        EpdLcd(uint8_t channel = 1, uint8_t dc = 25, uint8_t cs = 8, uint8_t rst = 17, uint8_t led = 127 );
         ~EpdLcd();
 
         static Nan::Persistent<v8::Function> constructor;
@@ -92,5 +90,23 @@ protected:
   void HandleOKCallback();
 };
 
+class DisClearFullWorker : public Nan::AsyncWorker {
+  public:
+	DisClearFullWorker(Nan::Callback *callback) : AsyncWorker(callback) {};
+	~DisClearFullWorker() {};
+	void Execute();
+  protected:
+	void HandleOKCallback();
+  };
+
+class DisUpdatePartWorker : public Nan::AsyncWorker {
+public:
+  DisUpdatePartWorker(Nan::Callback *callback) : AsyncWorker(callback) {};
+  ~DisUpdatePartWorker() {};
+  void Execute();
+protected:  
+  bool res = false;
+  void HandleOKCallback();
+};
 
 #endif
